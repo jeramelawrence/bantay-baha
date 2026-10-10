@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bantay Baha Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold text-blue-600 mb-4">Bantay Baha - Flood Monitoring Dashboard</h1>
+    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+      <p class="text-lg font-semibold text-gray-700">Sensor ID: <span id="sensorId" class="text-blue-500">--</span></p>
+      <p class="text-lg font-semibold text-gray-700">Water Level: <span id="waterLevel" class="text-blue-500">--</span> cm</p>
+      <p class="text-sm text-gray-500">Last Updated: <span id="timestamp">--</span></p>
+    </div>
+    
+    <h2 class="text-xl font-bold text-gray-800 mb-2">Recent Readings</h2>
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white border border-gray-200">
+        <thead>
+          <tr class="bg-gray-100 border-b">
+            <th class="py-2 px-4 text-left">Sensor ID</th>
+            <th class="py-2 px-4 text-left">Water Level (cm)</th>
+            <th class="py-2 px-4 text-left">Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr>
+            <td colspan="3" class="py-4 px-4 text-center text-gray-500">No data available yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/readings');
+        const data = await response.json();
+        if (data.length > 0) {
+          const latest = data[data.length - 1];
+          document.getElementById('sensorId').innerText = latest.sensorId;
+          document.getElementById('waterLevel').innerText = latest.waterLevelCm;
+          document.getElementById('timestamp').innerText = new Date(latest.timestamp).toLocaleString();
+
+          const tableBody = document.getElementById('tableBody');
+          tableBody.innerHTML = data.slice(-10).reverse().map(r => `
+            <tr class="border-b">
+              <td class="py-2 px-4">${r.sensorId}</td>
+              <td class="py-2 px-4">${r.waterLevelCm} cm</td>
+              <td class="py-2 px-4">${new Date(r.timestamp).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, 5000);
+  </script>
+</body>
+</html>
