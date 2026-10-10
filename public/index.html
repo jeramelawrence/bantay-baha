@@ -3,48 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bantay Baha Dashboard</title>
+  <title>Bantay Baha Dashboard with Graph</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
-  <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
-    <h1 class="text-2xl font-bold text-blue-600 mb-4">Bantay Baha - Flood Monitoring Dashboard</h1>
-    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-      <p class="text-lg font-semibold text-gray-700">Sensor ID: <span id="sensorId" class="text-blue-500">--</span></p>
-      <p class="text-lg font-semibold text-gray-700">Water Level: <span id="waterLevel" class="text-blue-500">--</span> cm</p>
-      <p class="text-sm text-gray-500">Last Updated: <span id="timestamp">--</span></p>
-    </div>
+  <div class="max-w-4xl mx-auto space-y-6">
     
-    <h2 class="text-xl font-bold text-gray-800 mb-2">Recent Readings</h2>
-    <div class="overflow-x-auto">
-      <table class="min-w-full bg-white border border-gray-200">
-        <thead>
-          <tr class="bg-gray-100 border-b">
-            <th class="py-2 px-4 text-left">Sensor ID</th>
-            <th class="py-2 px-4 text-left">Water Level (cm)</th>
-            <th class="py-2 px-4 text-left">Timestamp</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr>
-            <td colspan="3" class="py-4 px-4 text-center text-gray-500">No data available yet.</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Header & Latest Status -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h1 class="text-2xl font-bold text-blue-600 mb-4">Bantay Baha - Flood Monitoring Dashboard</h1>
+      <div class="p-4 bg-blue-50 rounded-lg">
+        <p class="text-lg font-semibold text-gray-700">Sensor ID: <span id="sensorId" class="text-blue-500">--</span></p>
+        <p class="text-lg font-semibold text-gray-700">Water Level: <span id="waterLevel" class="text-blue-500">--</span> cm</p>
+        <p class="text-sm text-gray-500">Last Updated: <span id="timestamp">--</span></p>
+      </div>
     </div>
+
+    <!-- Graph Section -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Water Level Trend (cm)</h2>
+      <div class="relative w-full h-72">
+        <canvas id="waterChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-2">Recent Readings</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200">
+          <thead>
+            <tr class="bg-gray-100 border-b">
+              <th class="py-2 px-4 text-left">Sensor ID</th>
+              <th class="py-2 px-4 text-left">Water Level (cm)</th>
+              <th class="py-2 px-4 text-left">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="3" class="py-4 px-4 text-center text-gray-500">No data available yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script>
+    // Initialize Chart.js
+    const ctx = document.getElementById('waterChart').getContext('2d');
+    const waterChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Water Level (cm)',
+          data: [],
+          borderColor: 'rgb(37, 99, 235)',
+          backgroundColor: 'rgba(37, 99, 235, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            suggestedMax: 200
+          }
+        }
+      }
+    });
+
     async function fetchData() {
       try {
         const response = await fetch('/api/readings');
         const data = await response.json();
+        
         if (data.length > 0) {
           const latest = data[data.length - 1];
           document.getElementById('sensorId').innerText = latest.sensorId;
           document.getElementById('waterLevel').innerText = latest.waterLevelCm;
-          document.getElementById('timestamp').innerText = new Date(latest.timestamp).toLocaleString();
+          document.getElementById('timestamp').innerText = new Date(latest.timestamp).toLocaleTimeString();
 
+          // Update Chart Data (kunin ang huling 15 readings para sa linya)
+          const recentData = data.slice(-15);
+          waterChart.data.labels = recentData.map(r => new Date(r.timestamp).toLocaleTimeString());
+          waterChart.data.datasets[0].data = recentData.map(r => r.waterLevelCm);
+          waterChart.update();
+
+          // Update Table
           const tableBody = document.getElementById('tableBody');
           tableBody.innerHTML = data.slice(-10).reverse().map(r => `
             <tr class="border-b">
